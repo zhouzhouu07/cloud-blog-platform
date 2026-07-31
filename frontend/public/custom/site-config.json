@@ -1,11 +1,10 @@
 {
-  "siteTitle": "周晋贤的技术博客",
-  "siteSubtitle": "Linux 运维 · Docker 容器 · 数据库 · 监控告警",
-  "heroTitle": "记录云服务器、容器化部署与自动化运维实践",
-  "heroText": "本站基于 React、Gin、MariaDB、Nginx、Docker Compose、Prometheus、Grafana 和 Alertmanager 构建，用于记录个人技术学习与运维项目实践。",
-  "ownerName": "周晋贤",
-  "ownerRole": "通信工程本科 · 运维方向学习者",
-  "heroImage": "",
+  "siteTitle": "周周的技术博客",
+  "homeTitle": "周周的技术博客",
+  "homeText": "记录生活、学习与技术成长。",
+  "ownerName": "周周",
+  "backgroundImage": "",
   "avatarImage": "",
-  "galleryImages": []
+  "articleImages": [],
+  "articleImageMap": {}
 }

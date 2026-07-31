@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
@@ -6,15 +6,13 @@ const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 const DEFAULT_CONFIG = {
   siteTitle: '周晋贤的技术博客',
-  siteSubtitle: 'Linux 运维 · Docker 容器 · 数据库 · 监控告警',
-  heroTitle: '记录云服务器、容器化部署与自动化运维实践',
-  heroText:
-    '本站基于 React、Gin、MariaDB、Nginx、Docker Compose、Prometheus、Grafana 和 Alertmanager 构建，用于记录个人技术学习与运维项目实践。',
+  homeTitle: '周晋贤的技术博客',
+  homeText: '记录生活、学习与技术成长。',
   ownerName: '周晋贤',
-  ownerRole: '通信工程本科 · 运维方向学习者',
-  heroImage: '',
+  backgroundImage: '',
   avatarImage: '',
-  galleryImages: []
+  articleImages: [],
+  articleImageMap: {}
 }
 
 function requestJson(path, options = {}) {
@@ -31,8 +29,8 @@ function requestJson(path, options = {}) {
 }
 
 function formatDate(value) {
-  if (!value) return '未发布'
-  return String(value).replace('T', ' ').slice(0, 16)
+  if (!value) return ''
+  return String(value).replace('T', ' ').slice(0, 10)
 }
 
 function useSiteConfig() {
@@ -41,288 +39,318 @@ function useSiteConfig() {
   useEffect(() => {
     fetch('/custom/site-config.json', { cache: 'no-store' })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error('site config not found')
-        }
+        if (!response.ok) throw new Error('config not found')
         return response.json()
       })
       .then((data) => {
         setConfig({
           ...DEFAULT_CONFIG,
           ...data,
-          galleryImages: Array.isArray(data.galleryImages) ? data.galleryImages : []
+          articleImages: Array.isArray(data.articleImages) ? data.articleImages : [],
+          articleImageMap: data.articleImageMap && typeof data.articleImageMap === 'object'
+            ? data.articleImageMap
+            : {}
         })
       })
-      .catch(() => {
-        setConfig(DEFAULT_CONFIG)
-      })
+      .catch(() => setConfig(DEFAULT_CONFIG))
   }, [])
 
   return config
 }
 
-function PublicBlog() {
+function getArticleImage(config, article, index) {
+  const map = config.articleImageMap || {}
+
+  if (map[String(article.id)]) {
+    return map[String(article.id)]
+  }
+
+  if (article.slug && map[article.slug]) {
+    return map[article.slug]
+  }
+
+  if (config.articleImages && config.articleImages.length > 0) {
+    return config.articleImages[index % config.articleImages.length]
+  }
+
+  return ''
+}
+
+function Layout({ config, children }) {
+  const backgroundStyle = config.backgroundImage
+    ? { backgroundImage: `url(${config.backgroundImage})` }
+    : {}
+
+  return (
+    <div className="blog-page" style={backgroundStyle}>
+      <div className="page-mask"></div>
+
+      <header className="site-header">
+        <div className="site-name">
+          <a href="/">{config.siteTitle}</a>
+        </div>
+
+        <nav className="site-nav">
+          <a href="/">首页</a>
+          <a href="/#articles">文章</a>
+          <a href="/#categories">分类</a>
+          <a href="/#message">留言</a>
+          <a href="/admin">后台</a>
+        </nav>
+      </header>
+
+      {children}
+
+      <footer className="site-footer">
+        © {new Date().getFullYear()} {config.siteTitle}
+      </footer>
+    </div>
+  )
+}
+
+function HomePage() {
   const config = useSiteConfig()
   const [articles, setArticles] = useState([])
   const [categories, setCategories] = useState([])
-  const [selectedArticle, setSelectedArticle] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('正在加载文章数据...')
+  const [message, setMessage] = useState('')
 
-  const totalViews = useMemo(() => {
-    return articles.reduce((sum, item) => sum + Number(item.view_count || 0), 0)
-  }, [articles])
-
-  async function loadHomeData() {
-    setLoading(true)
-    setMessage('正在加载文章数据...')
-
+  async function loadData() {
     try {
       const [articleData, categoryData] = await Promise.all([
-        requestJson('/api/articles?page=1&page_size=10'),
+        requestJson('/api/articles?page=1&page_size=20'),
         requestJson('/api/categories')
       ])
 
-      const list = articleData.items || []
-
-      setArticles(list)
+      setArticles(articleData.items || [])
       setCategories(categoryData.items || [])
-
-      if (list.length > 0) {
-        await openArticle(list[0].id, false)
-      } else {
-        setSelectedArticle(null)
-      }
-
-      setMessage('数据加载完成')
+      setMessage('')
     } catch (error) {
-      setMessage(error.message || '数据加载失败，请检查后端接口')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function openArticle(id, shouldRefreshList = true) {
-    try {
-      const data = await requestJson(`/api/articles/${id}`)
-      setSelectedArticle(data)
-
-      if (shouldRefreshList) {
-        const listData = await requestJson('/api/articles?page=1&page_size=10')
-        setArticles(listData.items || [])
-      }
-    } catch (error) {
-      setMessage(error.message || '文章详情加载失败')
+      setMessage(error.message || '加载失败')
     }
   }
 
   useEffect(() => {
-    loadHomeData()
+    loadData()
   }, [])
 
   return (
-    <div className="site-shell">
-      <div className="background-blur background-blur-a"></div>
-      <div className="background-blur background-blur-b"></div>
+    <Layout config={config}>
+      <main className="blog-container">
+        <section className="home-hero">
+          {config.avatarImage && (
+            <img className="home-avatar" src={config.avatarImage} alt={config.ownerName} />
+          )}
 
-      <header className="topbar">
-        <a className="brand" href="/">
-          <span className="brand-logo">Z</span>
-          <span>
-            <strong>{config.siteTitle}</strong>
-            <small>{config.siteSubtitle}</small>
-          </span>
-        </a>
-
-        <nav className="nav-links">
-          <a href="#home">首页</a>
-          <a href="#articles">文章</a>
-          <a href="#ops">运维能力</a>
-          <a href="/admin">后台管理</a>
-          <a href="/api/health" target="_blank" rel="noreferrer">API</a>
-        </nav>
-      </header>
-
-      <main id="home">
-        <section className="hero-card">
-          <div className="hero-copy">
-            <p className="kicker">Cloud Native Blog</p>
-            <h1>{config.heroTitle}</h1>
-            <p className="hero-desc">{config.heroText}</p>
-
-            <div className="hero-actions">
-              <a className="btn btn-primary" href="#articles">开始阅读</a>
-              <button className="btn btn-soft" onClick={loadHomeData}>刷新数据</button>
+          {!config.avatarImage && (
+            <div className="home-avatar text-avatar">
+              {String(config.ownerName || '周').slice(0, 1)}
             </div>
+          )}
 
-            <div className="hero-metrics">
-              <div>
-                <strong>{articles.length}</strong>
-                <span>文章</span>
-              </div>
-              <div>
-                <strong>{categories.length}</strong>
-                <span>分类</span>
-              </div>
-              <div>
-                <strong>{totalViews}</strong>
-                <span>阅读</span>
-              </div>
-            </div>
-          </div>
-
-          <aside className="profile-card">
-            <div className="profile-cover">
-              {config.heroImage ? (
-                <img src={config.heroImage} alt="博客封面" />
-              ) : (
-                <div className="default-cover">
-                  <span>Cloud</span>
-                  <span>Blog</span>
-                </div>
-              )}
-            </div>
-
-            <div className="profile-body">
-              <div className="avatar">
-                {config.avatarImage ? (
-                  <img src={config.avatarImage} alt={config.ownerName} />
-                ) : (
-                  <span>周</span>
-                )}
-              </div>
-
-              <h2>{config.ownerName}</h2>
-              <p>{config.ownerRole}</p>
-
-              <div className="status-pill">
-                <span className={loading ? 'pulse-dot loading' : 'pulse-dot'}></span>
-                {message}
-              </div>
-            </div>
-          </aside>
+          <h1>{config.homeTitle}</h1>
+          <p>{config.homeText}</p>
         </section>
 
-        <section className="section" id="ops">
-          <div className="section-heading">
-            <p>Operations Capability</p>
-            <h2>项目运维能力</h2>
-          </div>
+        <section className="content-shell">
+          <div className="main-column" id="articles">
+            {message && <div className="notice-card">{message}</div>}
 
-          <div className="ops-grid">
-            <article className="ops-card">
-              <span>01</span>
-              <h3>容器化部署</h3>
-              <p>使用 Docker Compose 编排 React、Nginx、Gin API、MariaDB、Prometheus、Grafana 等服务。</p>
-            </article>
-            <article className="ops-card">
-              <span>02</span>
-              <h3>CI/CD 流水线</h3>
-              <p>通过 GitHub Actions 构建前后端镜像，推送至阿里云 ACR，并支持远程部署到 ECS。</p>
-            </article>
-            <article className="ops-card">
-              <span>03</span>
-              <h3>备份与恢复</h3>
-              <p>编写 MariaDB 自动备份、恢复和校验脚本，支持误删数据恢复演练。</p>
-            </article>
-            <article className="ops-card">
-              <span>04</span>
-              <h3>监控告警</h3>
-              <p>接入 Prometheus、Grafana、Alertmanager，实现主机、容器、数据库和业务指标告警。</p>
-            </article>
-          </div>
-        </section>
+            {articles.map((article, index) => {
+              const image = getArticleImage(config, article, index)
 
-        <section className="section content-layout" id="articles">
-          <div className="article-column">
-            <div className="section-heading">
-              <p>Latest Posts</p>
-              <h2>最新文章</h2>
-            </div>
+              return (
+                <article className="article-card" key={article.id}>
+                  <a className="article-cover" href={`/post/${article.id}`}>
+                    {image ? (
+                      <img src={image} alt={article.title} />
+                    ) : (
+                      <div className="default-cover"></div>
+                    )}
+                  </a>
 
-            <div className="article-feed">
-              {articles.length === 0 && !loading && (
-                <div className="empty-card">暂无文章，请进入后台新增文章。</div>
-              )}
+                  <div className="article-body">
+                    <div className="article-meta">
+                      <span>{formatDate(article.published_at || article.created_at)}</span>
+                      <span>{article.category_name || '未分类'}</span>
+                      <span>阅读 {article.view_count || 0}</span>
+                    </div>
 
-              {articles.map((item) => (
-                <button
-                  key={item.id}
-                  className={`post-card ${selectedArticle?.id === item.id ? 'active' : ''}`}
-                  onClick={() => openArticle(item.id)}
-                >
-                  <div className="post-meta">
-                    <span>{item.category_name || '未分类'}</span>
-                    <span>{formatDate(item.published_at || item.created_at)}</span>
+                    <h2>
+                      <a href={`/post/${article.id}`}>{article.title}</a>
+                    </h2>
+
+                    <p>{article.summary || '这篇文章暂时没有摘要。'}</p>
+
+                    <a className="read-more" href={`/post/${article.id}`}>
+                      继续阅读
+                    </a>
                   </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary || '暂无摘要'}</p>
-                  <div className="read-row">
-                    <small>阅读量：{item.view_count}</small>
-                    <em>阅读全文 →</em>
-                  </div>
-                </button>
-              ))}
-            </div>
+                </article>
+              )
+            })}
+
+            {articles.length === 0 && !message && (
+              <div className="notice-card">暂无文章。</div>
+            )}
           </div>
 
           <aside className="side-column">
-            <div className="glass-card">
+            <section className="side-card" id="categories">
               <h3>分类</h3>
-              <div className="tag-list">
+              <div className="category-list">
                 {categories.map((item) => (
                   <span key={item.id}>{item.name}</span>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div className="glass-card">
-              <h3>图片展示</h3>
-              <div className="gallery">
-                {config.galleryImages.length > 0 ? (
-                  config.galleryImages.slice(0, 6).map((src, index) => (
-                    <img key={src + index} src={src} alt={`展示图 ${index + 1}`} />
-                  ))
-                ) : (
-                  <>
-                    <div className="gallery-placeholder">Docker</div>
-                    <div className="gallery-placeholder">Linux</div>
-                    <div className="gallery-placeholder">Grafana</div>
-                    <div className="gallery-placeholder">CI/CD</div>
-                  </>
-                )}
-              </div>
-            </div>
+            <section className="side-card" id="message">
+              <h3>关于本站</h3>
+              <p>
+                这里用于记录个人学习、生活随笔和技术成长。页面背景、头像和文章封面均可自定义替换。
+              </p>
+            </section>
           </aside>
         </section>
+      </main>
+    </Layout>
+  )
+}
 
-        <section className="section">
-          <article className="reader-card">
-            {selectedArticle ? (
-              <>
-                <div className="reader-meta">
-                  <span>{selectedArticle.category_name || '未分类'}</span>
-                  <span>阅读量：{selectedArticle.view_count}</span>
-                  <span>状态：{selectedArticle.status}</span>
-                </div>
-                <h2>{selectedArticle.title}</h2>
-                <p className="reader-summary">{selectedArticle.summary}</p>
-                <pre>{selectedArticle.content}</pre>
-              </>
-            ) : (
-              <div className="empty-card">请选择一篇文章查看详情。</div>
-            )}
+function PostPage() {
+  const config = useSiteConfig()
+  const postID = window.location.pathname.split('/').filter(Boolean)[1]
+  const [article, setArticle] = useState(null)
+  const [comments, setComments] = useState([])
+  const [form, setForm] = useState({
+    nickname: '',
+    email: '',
+    content: ''
+  })
+  const [message, setMessage] = useState('')
+
+  async function loadArticle() {
+    try {
+      const data = await requestJson(`/api/articles/${postID}`)
+      setArticle(data)
+      setMessage('')
+    } catch (error) {
+      setMessage(error.message || '文章加载失败')
+    }
+  }
+
+  async function loadComments() {
+    try {
+      const data = await requestJson(`/api/articles/${postID}/comments`)
+      setComments(data.items || [])
+    } catch {
+      setComments([])
+    }
+  }
+
+  async function submitComment(event) {
+    event.preventDefault()
+
+    if (!form.nickname.trim() || !form.content.trim()) {
+      setMessage('昵称和评论内容不能为空。')
+      return
+    }
+
+    try {
+      const data = await requestJson(`/api/articles/${postID}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(form)
+      })
+
+      setMessage(data.message || '评论发布成功。')
+      setForm({
+        nickname: '',
+        email: '',
+        content: ''
+      })
+      await loadComments()
+    } catch (error) {
+      setMessage(error.message || '评论发布失败')
+    }
+  }
+
+  useEffect(() => {
+    loadArticle()
+    loadComments()
+  }, [postID])
+
+  return (
+    <Layout config={config}>
+      <main className="post-container">
+        {message && <div className="notice-card">{message}</div>}
+
+        {article ? (
+          <article className="post-panel">
+            <div className="article-meta">
+              <span>{formatDate(article.published_at || article.created_at)}</span>
+              <span>{article.category_name || '未分类'}</span>
+              <span>阅读 {article.view_count || 0}</span>
+            </div>
+
+            <h1>{article.title}</h1>
+            {article.summary && <p className="post-summary">{article.summary}</p>}
+
+            <div className="post-content">
+              {article.content}
+            </div>
           </article>
+        ) : (
+          <div className="notice-card">文章加载中...</div>
+        )}
+
+        <section className="comment-panel">
+          <h2>评论</h2>
+
+          <form className="comment-form" onSubmit={submitComment}>
+            <div className="comment-row">
+              <input
+                value={form.nickname}
+                onChange={(event) => setForm({ ...form, nickname: event.target.value })}
+                placeholder="昵称"
+              />
+              <input
+                value={form.email}
+                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                placeholder="邮箱，可不填"
+              />
+            </div>
+
+            <textarea
+              rows="5"
+              value={form.content}
+              onChange={(event) => setForm({ ...form, content: event.target.value })}
+              placeholder="写下你的评论..."
+            />
+
+            <button type="submit">发布评论</button>
+          </form>
+
+          <div className="comment-list">
+            {comments.map((item) => (
+              <article className="comment-item" key={item.id}>
+                <div>
+                  <strong>{item.nickname}</strong>
+                  <span>{item.created_at}</span>
+                </div>
+                <p>{item.content}</p>
+              </article>
+            ))}
+
+            {comments.length === 0 && (
+              <p className="no-comments">暂时还没有评论。</p>
+            )}
+          </div>
         </section>
       </main>
-
-      <footer className="footer">
-        <span>Rocky Linux 8.6</span>
-        <span>Docker Compose</span>
-        <span>React + Gin + MariaDB</span>
-        <span>Prometheus + Grafana + Alertmanager</span>
-      </footer>
-    </div>
+    </Layout>
   )
 }
 
@@ -343,18 +371,6 @@ function AdminPage() {
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [message, setMessage] = useState('请输入管理员 Token 后加载文章。')
-  const [loading, setLoading] = useState(false)
-
-  function saveToken() {
-    localStorage.setItem('cloud_blog_admin_token', token)
-    setMessage('Token 已保存到浏览器本地。')
-  }
-
-  function clearToken() {
-    localStorage.removeItem('cloud_blog_admin_token')
-    setToken('')
-    setMessage('Token 已清除。')
-  }
 
   async function loadCategories() {
     const data = await requestJson('/api/categories')
@@ -367,8 +383,6 @@ function AdminPage() {
       return
     }
 
-    setLoading(true)
-
     try {
       const data = await requestJson('/api/admin/articles?page=1&page_size=50', {
         headers: {
@@ -380,48 +394,41 @@ function AdminPage() {
       setMessage('文章列表加载成功。')
     } catch (error) {
       setMessage(error.message)
-    } finally {
-      setLoading(false)
     }
   }
 
-  async function loadArticleContent(id) {
+  async function loadAdminArticleDetail(id) {
+    if (!token) {
+      setMessage('请先输入管理员 Token。')
+      return
+    }
+
     try {
-      const data = await requestJson(`/api/articles/${id}`)
+      const data = await requestJson(`/api/admin/articles/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
 
-      setForm((current) => ({
-        ...current,
-        content: data.content || current.content || '',
-        summary: data.summary || current.summary || ''
-      }))
-    } catch {
-      setMessage('文章正文加载失败，草稿文章可能无法通过公开详情接口读取。')
+      setForm({
+        id: data.id,
+        category_id: data.category_id || 1,
+        title: data.title || '',
+        slug: data.slug || '',
+        summary: data.summary || '',
+        content: data.content || '',
+        status: data.status || 'draft'
+      })
+
+      setMessage(`正在编辑文章 #${data.id}`)
+    } catch (error) {
+      setMessage(error.message || '文章详情加载失败')
     }
   }
 
-  function editArticle(item) {
-    setForm({
-      id: item.id,
-      category_id: item.category_id || 1,
-      title: item.title || '',
-      slug: item.slug || '',
-      summary: item.summary || '',
-      content: item.content || '',
-      status: item.status || 'draft'
-    })
-
-    loadArticleContent(item.id)
-  }
-
-  function resetForm() {
-    setForm(emptyForm)
-  }
-
-  function updateField(field, value) {
-    setForm((current) => ({
-      ...current,
-      [field]: value
-    }))
+  function saveToken() {
+    localStorage.setItem('cloud_blog_admin_token', token)
+    setMessage('Token 已保存。')
   }
 
   async function submitArticle(event) {
@@ -461,7 +468,7 @@ function AdminPage() {
       })
 
       setMessage(data.message || '保存成功。')
-      resetForm()
+      setForm(emptyForm)
       await loadAdminArticles()
     } catch (error) {
       setMessage(error.message)
@@ -474,8 +481,9 @@ function AdminPage() {
       return
     }
 
-    const confirmed = window.confirm(`确认删除文章 ID=${id} 吗？`)
-    if (!confirmed) return
+    if (!window.confirm(`确认删除文章 ID=${id} 吗？`)) {
+      return
+    }
 
     try {
       const data = await requestJson(`/api/admin/articles/${id}`, {
@@ -486,6 +494,9 @@ function AdminPage() {
       })
 
       setMessage(data.message || '删除成功。')
+      if (form.id === id) {
+        setForm(emptyForm)
+      }
       await loadAdminArticles()
     } catch (error) {
       setMessage(error.message)
@@ -493,168 +504,119 @@ function AdminPage() {
   }
 
   useEffect(() => {
-    loadCategories().catch(() => {
-      setMessage('分类加载失败。')
-    })
-
-    if (token) {
-      loadAdminArticles()
-    }
+    loadCategories().catch(() => setMessage('分类加载失败。'))
+    if (token) loadAdminArticles()
   }, [])
 
   return (
-    <div className="admin-shell">
-      <div className="background-blur background-blur-a"></div>
-      <div className="background-blur background-blur-b"></div>
+    <Layout config={config}>
+      <main className="admin-container">
+        <section className="admin-card">
+          <h1>后台管理</h1>
 
-      <header className="admin-hero">
-        <div>
-          <p className="kicker">Admin Console</p>
-          <h1>{config.siteTitle} 后台管理</h1>
-          <p>管理文章内容、发布状态和分类归属，所有写操作均通过管理员 Token 认证。</p>
-        </div>
-        <a className="btn btn-primary" href="/">返回首页</a>
-      </header>
+          <div className="token-row">
+            <input
+              type="password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder="ADMIN_TOKEN"
+            />
+            <button onClick={saveToken}>保存</button>
+            <button onClick={loadAdminArticles}>刷新</button>
+          </div>
 
-      <section className="admin-token-card">
-        <input
-          type="password"
-          placeholder="请输入 ADMIN_TOKEN"
-          value={token}
-          onChange={(event) => setToken(event.target.value)}
-        />
-        <button className="btn btn-primary" onClick={saveToken}>保存 Token</button>
-        <button className="btn btn-soft" onClick={clearToken}>清除</button>
-        <button className="btn btn-soft" onClick={loadAdminArticles}>
-          {loading ? '加载中...' : '刷新文章'}
-        </button>
-      </section>
-
-      <div className="admin-message">{message}</div>
-
-      <main className="admin-layout">
-        <section className="admin-panel">
-          <h2>{form.id ? `编辑文章 #${form.id}` : '新增文章'}</h2>
-
-          <form className="admin-form" onSubmit={submitArticle}>
-            <label>
-              标题
-              <input
-                value={form.title}
-                onChange={(event) => updateField('title', event.target.value)}
-                placeholder="文章标题"
-              />
-            </label>
-
-            <label>
-              Slug
-              <input
-                value={form.slug}
-                onChange={(event) => updateField('slug', event.target.value)}
-                placeholder="例如 docker-compose-cloud-blog"
-              />
-            </label>
-
-            <div className="form-row">
-              <label>
-                分类
-                <select
-                  value={form.category_id || ''}
-                  onChange={(event) => updateField('category_id', event.target.value)}
-                >
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                状态
-                <select
-                  value={form.status}
-                  onChange={(event) => updateField('status', event.target.value)}
-                >
-                  <option value="published">published</option>
-                  <option value="draft">draft</option>
-                </select>
-              </label>
-            </div>
-
-            <label>
-              摘要
-              <textarea
-                rows="3"
-                value={form.summary}
-                onChange={(event) => updateField('summary', event.target.value)}
-                placeholder="文章摘要"
-              />
-            </label>
-
-            <label>
-              正文
-              <textarea
-                rows="14"
-                value={form.content}
-                onChange={(event) => updateField('content', event.target.value)}
-                placeholder="支持 Markdown 文本，当前页面以纯文本展示。"
-              />
-            </label>
-
-            <div className="admin-actions">
-              <button className="btn btn-primary" type="submit">
-                {form.id ? '保存修改' : '新增文章'}
-              </button>
-              <button className="btn btn-soft" type="button" onClick={resetForm}>
-                清空表单
-              </button>
-            </div>
-          </form>
+          {message && <p className="admin-message">{message}</p>}
         </section>
 
-        <section className="admin-panel">
-          <h2>文章列表</h2>
+        <section className="admin-layout">
+          <form className="admin-card admin-form" onSubmit={submitArticle}>
+            <h2>{form.id ? `编辑文章 #${form.id}` : '新增文章'}</h2>
 
-          <div className="admin-list">
-            {articles.length === 0 && (
-              <p className="empty-card">暂无文章，或 Token 未认证。</p>
-            )}
+            <input
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+              placeholder="标题"
+            />
+
+            <input
+              value={form.slug}
+              onChange={(event) => setForm({ ...form, slug: event.target.value })}
+              placeholder="Slug，例如 linux-note"
+            />
+
+            <select
+              value={form.category_id || ''}
+              onChange={(event) => setForm({ ...form, category_id: event.target.value })}
+            >
+              {categories.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={form.status}
+              onChange={(event) => setForm({ ...form, status: event.target.value })}
+            >
+              <option value="published">published</option>
+              <option value="draft">draft</option>
+            </select>
+
+            <textarea
+              rows="3"
+              value={form.summary}
+              onChange={(event) => setForm({ ...form, summary: event.target.value })}
+              placeholder="摘要"
+            />
+
+            <textarea
+              rows="14"
+              value={form.content}
+              onChange={(event) => setForm({ ...form, content: event.target.value })}
+              placeholder="正文"
+            />
+
+            <div className="admin-actions">
+              <button type="submit">保存文章</button>
+              <button type="button" onClick={() => setForm(emptyForm)}>清空</button>
+            </div>
+          </form>
+
+          <section className="admin-card">
+            <h2>文章列表</h2>
 
             {articles.map((item) => (
-              <article className="admin-item" key={item.id}>
-                <div>
-                  <div className="post-meta">
-                    <span>{item.status}</span>
-                    <span>ID：{item.id}</span>
-                    <span>{item.category_name || '未分类'}</span>
-                  </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary || '暂无摘要'}</p>
-                  <small>阅读量：{item.view_count}</small>
+              <article className="admin-article" key={item.id}>
+                <h3>{item.title}</h3>
+                <p>{item.summary || '暂无摘要'}</p>
+                <div className="admin-article-info">
+                  <span>ID：{item.id}</span>
+                  <span>{item.status}</span>
+                  <span>{item.category_name || '未分类'}</span>
                 </div>
-
-                <div className="admin-item-actions">
-                  <button className="btn btn-soft" onClick={() => editArticle(item)}>编辑</button>
-                  <button className="btn btn-danger" onClick={() => deleteArticle(item.id)}>删除</button>
+                <div className="admin-article-actions">
+                  <button type="button" onClick={() => loadAdminArticleDetail(item.id)}>编辑</button>
+                  <button type="button" onClick={() => deleteArticle(item.id)}>删除</button>
                 </div>
               </article>
             ))}
-          </div>
+
+            {articles.length === 0 && (
+              <p className="no-comments">暂无文章，或 Token 未认证。</p>
+            )}
+          </section>
         </section>
       </main>
-    </div>
+    </Layout>
   )
 }
 
 function Root() {
   const pathname = window.location.pathname
 
-  if (pathname.startsWith('/admin')) {
-    return <AdminPage />
-  }
+  if (pathname.startsWith('/admin')) return <AdminPage />
+  if (pathname.startsWith('/post/')) return <PostPage />
 
-  return <PublicBlog />
+  return <HomePage />
 }
 
 createRoot(document.getElementById('root')).render(<Root />)

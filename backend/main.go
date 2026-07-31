@@ -15,7 +15,7 @@ import (
 _ "github.com/go-sql-driver/mysql"
 )
 
-const appVersion = "0.4.0"
+const appVersion = "0.6.0"
 
 type application struct {
 db *sql.DB
@@ -62,9 +62,12 @@ api.GET("/health", app.databaseHealth)
         api.GET("/categories", app.listCategories)
         api.GET("/articles", app.listArticles)
         api.GET("/articles/:id", app.getArticle)
+        api.GET("/articles/:id/comments", app.listComments)
+        api.POST("/articles/:id/comments", app.createComment)
         admin := api.Group("/admin")
         admin.Use(adminAuth())
         admin.GET("/articles", app.adminListArticles)
+	admin.GET("/articles/:id", app.adminGetArticle)
         admin.POST("/articles", app.createArticle)
         admin.PUT("/articles/:id", app.updateArticle)
         admin.DELETE("/articles/:id", app.deleteArticle)
