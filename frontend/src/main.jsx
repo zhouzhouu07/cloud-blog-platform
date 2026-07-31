@@ -5,10 +5,10 @@ import './style.css'
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 const DEFAULT_CONFIG = {
-  siteTitle: '周晋贤的技术博客',
-  homeTitle: '周晋贤的技术博客',
+  siteTitle: '周周的技术博客',
+  homeTitle: '周周的技术博客',
   homeText: '记录生活、学习与技术成长。',
-  ownerName: '周晋贤',
+  ownerName: '周周',
   avatarImage: '/custom/images/avatar.jpg',
   articleImages: [],
   articleImageMap: {}
@@ -84,7 +84,7 @@ function getArticleImage(config, article, index) {
 function Layout({ config, children }) {
   const backgroundStyle = {
     backgroundImage:
-      "linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22)), url('/custom/images/background.jpg')"
+      `linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)), url('/custom/images/background.jpg?v=${Date.now()}')`
   }
 
   return (

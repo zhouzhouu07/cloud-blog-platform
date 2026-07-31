@@ -527,3 +527,15 @@ button {
 .page-mask {
   background: rgba(255, 255, 255, 0.06) !important;
 }
+
+/* Force fixed custom background */
+.blog-page {
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+.page-mask {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
