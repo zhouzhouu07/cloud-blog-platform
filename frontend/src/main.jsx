@@ -4,7 +4,20 @@ import './style.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
-function App() {
+function requestJson(path, options = {}) {
+  return fetch(`${API_BASE}${path}`, options).then(async (response) => {
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : {}
+
+    if (!response.ok) {
+      throw new Error(data.error || `请求失败：${response.status}`)
+    }
+
+    return data
+  })
+}
+
+function PublicBlog() {
   const [articles, setArticles] = useState([])
   const [categories, setCategories] = useState([])
   const [selectedArticle, setSelectedArticle] = useState(null)
@@ -20,23 +33,13 @@ function App() {
     setMessage('正在加载文章数据...')
 
     try {
-      const [articleRes, categoryRes] = await Promise.all([
-        fetch(`${API_BASE}/api/articles?page=1&page_size=10`),
-        fetch(`${API_BASE}/api/categories`)
+      const [articleData, categoryData] = await Promise.all([
+        requestJson('/api/articles?page=1&page_size=10'),
+        requestJson('/api/categories')
       ])
 
-      if (!articleRes.ok) {
-        throw new Error(`文章接口异常：${articleRes.status}`)
-      }
-
-      if (!categoryRes.ok) {
-        throw new Error(`分类接口异常：${categoryRes.status}`)
-      }
-
-      const articleData = await articleRes.json()
-      const categoryData = await categoryRes.json()
-
       const list = articleData.items || []
+
       setArticles(list)
       setCategories(categoryData.items || [])
 
@@ -56,18 +59,11 @@ function App() {
 
   async function openArticle(id, shouldRefreshList = true) {
     try {
-      const response = await fetch(`${API_BASE}/api/articles/${id}`)
-
-      if (!response.ok) {
-        throw new Error(`文章详情接口异常：${response.status}`)
-      }
-
-      const data = await response.json()
+      const data = await requestJson(`/api/articles/${id}`)
       setSelectedArticle(data)
 
       if (shouldRefreshList) {
-        const listResponse = await fetch(`${API_BASE}/api/articles?page=1&page_size=10`)
-        const listData = await listResponse.json()
+        const listData = await requestJson('/api/articles?page=1&page_size=10')
         setArticles(listData.items || [])
       }
     } catch (error) {
@@ -90,6 +86,7 @@ function App() {
           <div className="nav-links">
             <a href="#articles">文章</a>
             <a href="#ops">运维能力</a>
+            <a href="/admin">后台管理</a>
             <a href="/api/health" target="_blank" rel="noreferrer">API健康检查</a>
           </div>
         </nav>
@@ -207,4 +204,336 @@ function App() {
   )
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+const emptyForm = {
+  id: null,
+  category_id: 1,
+  title: '',
+  slug: '',
+  summary: '',
+  content: '',
+  status: 'published'
+}
+
+function AdminPage() {
+  const [token, setToken] = useState(localStorage.getItem('cloud_blog_admin_token') || '')
+  const [articles, setArticles] = useState([])
+  const [categories, setCategories] = useState([])
+  const [form, setForm] = useState(emptyForm)
+  const [message, setMessage] = useState('请输入管理员 Token 后加载文章。')
+  const [loading, setLoading] = useState(false)
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+
+  function saveToken() {
+    localStorage.setItem('cloud_blog_admin_token', token)
+    setMessage('Token 已保存到浏览器本地。')
+  }
+
+  function clearToken() {
+    localStorage.removeItem('cloud_blog_admin_token')
+    setToken('')
+    setMessage('Token 已清除。')
+  }
+
+  async function loadCategories() {
+    const data = await requestJson('/api/categories')
+    setCategories(data.items || [])
+  }
+
+  async function loadAdminArticles() {
+    if (!token) {
+      setMessage('请先输入管理员 Token。')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const data = await requestJson('/api/admin/articles?page=1&page_size=50', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setArticles(data.items || [])
+      setMessage('文章列表加载成功。')
+    } catch (error) {
+      setMessage(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function editArticle(item) {
+    setForm({
+      id: item.id,
+      category_id: item.category_id || 1,
+      title: item.title || '',
+      slug: item.slug || '',
+      summary: item.summary || '',
+      content: item.content || '',
+      status: item.status || 'draft'
+    })
+
+    loadArticleContent(item.id)
+  }
+
+  async function loadArticleContent(id) {
+    try {
+      const data = await requestJson(`/api/articles/${id}`)
+
+      setForm((current) => ({
+        ...current,
+        content: data.content || current.content || '',
+        summary: data.summary || current.summary || ''
+      }))
+    } catch {
+      setMessage('文章正文加载失败，可能该文章不是 published 状态。')
+    }
+  }
+
+  function resetForm() {
+    setForm(emptyForm)
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }))
+  }
+
+  async function submitArticle(event) {
+    event.preventDefault()
+
+    if (!token) {
+      setMessage('请先输入管理员 Token。')
+      return
+    }
+
+    if (!form.title.trim() || !form.content.trim()) {
+      setMessage('标题和正文不能为空。')
+      return
+    }
+
+    const payload = {
+      category_id: Number(form.category_id) || null,
+      title: form.title,
+      slug: form.slug,
+      summary: form.summary,
+      content: form.content,
+      status: form.status
+    }
+
+    const isEdit = Boolean(form.id)
+    const path = isEdit
+      ? `/api/admin/articles/${form.id}`
+      : '/api/admin/articles'
+
+    const method = isEdit ? 'PUT' : 'POST'
+
+    try {
+      const data = await requestJson(path, {
+        method,
+        headers: authHeaders,
+        body: JSON.stringify(payload)
+      })
+
+      setMessage(data.message || '保存成功。')
+      resetForm()
+      await loadAdminArticles()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  async function deleteArticle(id) {
+    if (!token) {
+      setMessage('请先输入管理员 Token。')
+      return
+    }
+
+    const confirmed = window.confirm(`确认删除文章 ID=${id} 吗？`)
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const data = await requestJson(`/api/admin/articles/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setMessage(data.message || '删除成功。')
+      await loadAdminArticles()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  useEffect(() => {
+    loadCategories().catch(() => {
+      setMessage('分类加载失败。')
+    })
+
+    if (token) {
+      loadAdminArticles()
+    }
+  }, [])
+
+  return (
+    <div className="admin-page">
+      <header className="admin-header">
+        <div>
+          <p className="eyebrow">Admin Console</p>
+          <h1>博客后台管理</h1>
+          <p>通过管理员 Token 管理文章内容，所有请求均走 Gin API。</p>
+        </div>
+
+        <a className="primary-btn" href="/">返回首页</a>
+      </header>
+
+      <section className="admin-token-panel">
+        <input
+          type="password"
+          placeholder="请输入 ADMIN_TOKEN"
+          value={token}
+          onChange={(event) => setToken(event.target.value)}
+        />
+        <button className="primary-btn" onClick={saveToken}>保存 Token</button>
+        <button className="ghost-btn" onClick={clearToken}>清除</button>
+        <button className="ghost-btn" onClick={loadAdminArticles}>
+          {loading ? '加载中...' : '刷新文章'}
+        </button>
+      </section>
+
+      <div className="admin-message">{message}</div>
+
+      <main className="admin-layout">
+        <section className="admin-card">
+          <h2>{form.id ? `编辑文章 #${form.id}` : '新增文章'}</h2>
+
+          <form className="admin-form" onSubmit={submitArticle}>
+            <label>
+              标题
+              <input
+                value={form.title}
+                onChange={(event) => updateField('title', event.target.value)}
+                placeholder="文章标题"
+              />
+            </label>
+
+            <label>
+              Slug
+              <input
+                value={form.slug}
+                onChange={(event) => updateField('slug', event.target.value)}
+                placeholder="例如 docker-compose-cloud-blog"
+              />
+            </label>
+
+            <label>
+              分类
+              <select
+                value={form.category_id || ''}
+                onChange={(event) => updateField('category_id', event.target.value)}
+              >
+                {categories.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              状态
+              <select
+                value={form.status}
+                onChange={(event) => updateField('status', event.target.value)}
+              >
+                <option value="published">published</option>
+                <option value="draft">draft</option>
+              </select>
+            </label>
+
+            <label>
+              摘要
+              <textarea
+                rows="3"
+                value={form.summary}
+                onChange={(event) => updateField('summary', event.target.value)}
+                placeholder="文章摘要"
+              />
+            </label>
+
+            <label>
+              正文
+              <textarea
+                rows="14"
+                value={form.content}
+                onChange={(event) => updateField('content', event.target.value)}
+                placeholder="支持 Markdown 文本，当前页面以纯文本展示。"
+              />
+            </label>
+
+            <div className="admin-actions">
+              <button className="primary-btn" type="submit">
+                {form.id ? '保存修改' : '新增文章'}
+              </button>
+              <button className="ghost-btn" type="button" onClick={resetForm}>
+                清空表单
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="admin-card">
+          <h2>文章列表</h2>
+
+          <div className="admin-article-list">
+            {articles.length === 0 && (
+              <p className="empty">暂无文章，或 Token 未认证。</p>
+            )}
+
+            {articles.map((item) => (
+              <article className="admin-article-item" key={item.id}>
+                <div>
+                  <span className="badge">{item.status}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.summary || '暂无摘要'}</p>
+                  <small>
+                    ID：{item.id} · 分类：{item.category_name || '未分类'} · 阅读：{item.view_count}
+                  </small>
+                </div>
+
+                <div className="admin-item-actions">
+                  <button className="ghost-btn" onClick={() => editArticle(item)}>编辑</button>
+                  <button className="danger-btn" onClick={() => deleteArticle(item.id)}>删除</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function Root() {
+  const pathname = window.location.pathname
+
+  if (pathname.startsWith('/admin')) {
+    return <AdminPage />
+  }
+
+  return <PublicBlog />
+}
+
+createRoot(document.getElementById('root')).render(<Root />)
