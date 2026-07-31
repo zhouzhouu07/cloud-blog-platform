@@ -15,7 +15,7 @@ import (
 _ "github.com/go-sql-driver/mysql"
 )
 
-const appVersion = "0.1.0"
+const appVersion = "0.2.0"
 
 type application struct {
 db *sql.DB
@@ -58,6 +58,9 @@ c.JSON(http.StatusOK, gin.H{
 api := router.Group("/api")
 {
 api.GET("/health", app.databaseHealth)
+        api.GET("/categories", app.listCategories)
+        api.GET("/articles", app.listArticles)
+        api.GET("/articles/:id", app.getArticle)
 api.GET("/version", func(c *gin.Context) {
 c.JSON(http.StatusOK, gin.H{
 "service": "cloud-blog-api",
