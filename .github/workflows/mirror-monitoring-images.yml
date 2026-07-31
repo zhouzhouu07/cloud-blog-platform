@@ -1,0 +1,44 @@
+name: Mirror Monitoring Images to ACR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: Mirror Monitoring Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Alibaba Cloud ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Mirror Prometheus
+        run: |
+          docker pull prom/prometheus:latest
+          docker tag prom/prometheus:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-prometheus:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-prometheus:latest
+
+      - name: Mirror Node Exporter
+        run: |
+          docker pull prom/node-exporter:latest
+          docker tag prom/node-exporter:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-node-exporter:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-node-exporter:latest
+
+      - name: Mirror cAdvisor
+        run: |
+          docker pull gcr.io/cadvisor/cadvisor:latest
+          docker tag gcr.io/cadvisor/cadvisor:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-cadvisor:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-cadvisor:latest
+
+      - name: Mirror Grafana
+        run: |
+          docker pull grafana/grafana-oss:latest
+          docker tag grafana/grafana-oss:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-grafana:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-grafana:latest
