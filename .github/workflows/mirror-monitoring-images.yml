@@ -25,6 +25,12 @@ jobs:
           docker tag prom/prometheus:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-prometheus:latest
           docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-prometheus:latest
 
+      - name: Mirror Alertmanager
+        run: |
+          docker pull prom/alertmanager:latest
+          docker tag prom/alertmanager:latest ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-alertmanager:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/cloud-blog-alertmanager:latest
+
       - name: Mirror Node Exporter
         run: |
           docker pull prom/node-exporter:latest
