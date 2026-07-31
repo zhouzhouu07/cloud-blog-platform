@@ -19,7 +19,7 @@ scrape_configs:
           - "cadvisor:8080"
 
   - job_name: "cloud-blog-api"
-    metrics_path: "/api/health"
+    metrics_path: "/api/metrics"
     static_configs:
       - targets:
           - "web:80"
