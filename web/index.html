@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周晋贤的云原生技术博客</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at top left, #e8f3ff, transparent 35%),
+                linear-gradient(135deg, #f4f7fb, #edf1f7);
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            color: #1f2937;
+        }
+
+        .container {
+            width: min(920px, 100%);
+            padding: 52px;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 20px;
+            box-shadow: 0 24px 70px rgba(31, 41, 55, 0.12);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: #edf5ff;
+            color: #2563eb;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        h1 {
+            margin: 22px 0 14px;
+            font-size: clamp(32px, 6vw, 52px);
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 18px;
+            line-height: 1.8;
+        }
+
+        .status {
+            margin-top: 34px;
+            padding: 20px 24px;
+            border-left: 5px solid #22c55e;
+            border-radius: 10px;
+            background: #f0fdf4;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-top: 30px;
+        }
+
+        .item {
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+        }
+
+        .item strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .item span {
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        footer {
+            margin-top: 34px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<main class="container">
+    <span class="tag">Cloud Blog Platform</span>
+
+    <h1>周晋贤的技术博客</h1>
+
+    <p class="subtitle">
+        记录 Linux运维、Docker、数据库、监控告警、云计算及自动化运维相关学习与项目实践。
+    </p>
+
+    <section class="status">
+        <strong>基础部署成功</strong>
+        <p>当前运行环境：Rocky Linux 8.6 + Docker Engine + Docker Compose + Nginx</p>
+    </section>
+
+    <section class="grid">
+        <div class="item">
+            <strong>前端系统</strong>
+            <span>后续接入 React 和 Ant Design，实现博客首页与后台管理。</span>
+        </div>
+
+        <div class="item">
+            <strong>后端服务</strong>
+            <span>后续使用 Gin 提供文章、分类、标签及用户认证接口。</span>
+        </div>
+
+        <div class="item">
+            <strong>数据存储</strong>
+            <span>后续部署 MariaDB，实现博客数据持久化和备份恢复。</span>
+        </div>
+
+        <div class="item">
+            <strong>运维能力</strong>
+            <span>后续接入自动发布、健康检查、监控告警和故障恢复。</span>
+        </div>
+    </section>
+
+    <footer>Alibaba Cloud ECS · Docker Compose Deployment</footer>
+</main>
+</body>
+</html>

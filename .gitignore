@@ -1,0 +1,32 @@
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# 数据库数据
+data/
+backup/
+*.sql
+*.sql.gz
+
+# 上传文件
+uploads/*
+!uploads/.gitkeep
+
+# 日志
+logs/
+*.log
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 前后端构建文件
+frontend/node_modules/
+frontend/dist/
+backend/bin/
+
+# 系统文件
+.DS_Store
+Thumbs.db
