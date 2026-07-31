@@ -34,3 +34,4 @@ Thumbs.db
 # 临时配置备份
 *.bak
 *.before-*
+web/custom/
