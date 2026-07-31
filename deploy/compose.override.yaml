@@ -1,0 +1,4 @@
+services:
+  web:
+    volumes:
+      - /opt/cloud-blog/web/custom:/usr/share/nginx/html/custom:ro,Z
