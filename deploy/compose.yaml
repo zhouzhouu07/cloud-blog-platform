@@ -1,8 +1,80 @@
 name: cloud-blog
 
 services:
+  db:
+    image: crpi-zfx371yy3clv1wpn.cn-shanghai.personal.cr.aliyuncs.com/zhoujinxian/cloud-blog-mariadb:lts-20260731
+    container_name: cloud-blog-db
+    restart: unless-stopped
+
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      TZ: Asia/Shanghai
+
+    volumes:
+      - db-data:/var/lib/mysql
+      - ../database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro,Z
+
+    healthcheck:
+      test:
+        - CMD
+        - healthcheck.sh
+        - --connect
+        - --innodb_initialized
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    mem_limit: 640m
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - blog-network
+
+  api:
+    image: ${API_IMAGE}
+    container_name: cloud-blog-api
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DSN: "${MARIADB_USER}:${MARIADB_PASSWORD}@tcp(db:3306)/${MARIADB_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local"
+      TZ: Asia/Shanghai
+      GIN_MODE: release
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1:8080/healthz | grep -q '"status":"ok"'
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    mem_limit: 256m
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - blog-network
+
   web:
-    image: nginx:alpine
+    image: crpi-zfx371yy3clv1wpn.cn-shanghai.personal.cr.aliyuncs.com/zhoujinxian/cloud-blog-nginx:alpine-20260731
     container_name: cloud-blog-web
     restart: unless-stopped
 
@@ -13,14 +85,20 @@ services:
       - ../web:/usr/share/nginx/html:ro,Z
       - ../config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
 
+    depends_on:
+      api:
+        condition: service_healthy
+
     healthcheck:
       test:
         - CMD-SHELL
         - wget -qO- http://127.0.0.1/health | grep -q ok
       interval: 15s
       timeout: 5s
-      retries: 3
+      retries: 5
       start_period: 5s
+
+    mem_limit: 96m
 
     logging:
       driver: json-file
@@ -30,6 +108,10 @@ services:
 
     networks:
       - blog-network
+
+volumes:
+  db-data:
+    name: cloud-blog-db-data
 
 networks:
   blog-network:
