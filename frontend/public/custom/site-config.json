@@ -1,10 +1,9 @@
 {
-  "siteTitle": "周周的技术博客",
-  "homeTitle": "周周的技术博客",
+  "siteTitle": "周晋贤的技术博客",
+  "homeTitle": "周晋贤的技术博客",
   "homeText": "记录生活、学习与技术成长。",
-  "ownerName": "周周",
-  "backgroundImage": "",
-  "avatarImage": "",
+  "ownerName": "周晋贤",
+  "avatarImage": "/custom/images/avatar.jpg",
   "articleImages": [],
   "articleImageMap": {}
 }

@@ -9,8 +9,7 @@ const DEFAULT_CONFIG = {
   homeTitle: '周晋贤的技术博客',
   homeText: '记录生活、学习与技术成长。',
   ownerName: '周晋贤',
-  backgroundImage: '',
-  avatarImage: '',
+  avatarImage: '/custom/images/avatar.jpg',
   articleImages: [],
   articleImageMap: {}
 }
@@ -69,17 +68,24 @@ function getArticleImage(config, article, index) {
     return map[article.slug]
   }
 
-  if (config.articleImages && config.articleImages.length > 0) {
-    return config.articleImages[index % config.articleImages.length]
+  const customImages = Array.isArray(config.articleImages)
+    ? config.articleImages.filter(Boolean)
+    : []
+
+  if (customImages.length > 0) {
+    return customImages[index % customImages.length]
   }
 
-  return ''
+  const seed = encodeURIComponent(String(article.slug || article.id || index || 'blog'))
+
+  return `https://picsum.photos/seed/cloud-blog-${seed}/900/650`
 }
 
 function Layout({ config, children }) {
-  const backgroundStyle = config.backgroundImage
-    ? { backgroundImage: `url(${config.backgroundImage})` }
-    : {}
+  const backgroundStyle = {
+    backgroundImage:
+      "linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22)), url('/custom/images/background.jpg')"
+  }
 
   return (
     <div className="blog-page" style={backgroundStyle}>
