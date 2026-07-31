@@ -15,7 +15,7 @@ import (
 _ "github.com/go-sql-driver/mysql"
 )
 
-const appVersion = "0.2.0"
+const appVersion = "0.3.0"
 
 type application struct {
 db *sql.DB
@@ -61,6 +61,12 @@ api.GET("/health", app.databaseHealth)
         api.GET("/categories", app.listCategories)
         api.GET("/articles", app.listArticles)
         api.GET("/articles/:id", app.getArticle)
+        admin := api.Group("/admin")
+        admin.Use(adminAuth())
+        admin.GET("/articles", app.adminListArticles)
+        admin.POST("/articles", app.createArticle)
+        admin.PUT("/articles/:id", app.updateArticle)
+        admin.DELETE("/articles/:id", app.deleteArticle)
 api.GET("/version", func(c *gin.Context) {
 c.JSON(http.StatusOK, gin.H{
 "service": "cloud-blog-api",

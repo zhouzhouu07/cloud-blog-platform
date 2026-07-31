@@ -48,6 +48,7 @@ services:
       MYSQL_DSN: "${MARIADB_USER}:${MARIADB_PASSWORD}@tcp(db:3306)/${MARIADB_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local"
       TZ: Asia/Shanghai
       GIN_MODE: release
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
 
     depends_on:
       db:
