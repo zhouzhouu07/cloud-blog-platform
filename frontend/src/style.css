@@ -512,3 +512,18 @@ button {
     flex-direction: column;
   }
 }
+
+/* Fixed custom background image */
+.blog-page {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)),
+    url('/custom/images/background.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+.page-mask {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
