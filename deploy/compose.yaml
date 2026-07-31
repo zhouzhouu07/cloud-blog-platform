@@ -75,7 +75,7 @@ services:
       - blog-network
 
   web:
-    image: crpi-zfx371yy3clv1wpn.cn-shanghai.personal.cr.aliyuncs.com/zhoujinxian/cloud-blog-nginx:alpine-20260731
+    image: ${WEB_IMAGE}
     container_name: cloud-blog-web
     restart: unless-stopped
 
@@ -83,7 +83,6 @@ services:
       - "80:80"
 
     volumes:
-      - ../web:/usr/share/nginx/html:ro,Z
       - ../config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
 
     depends_on:
