@@ -1,0 +1,60 @@
+name: Mirror Images to ACR
+
+on:
+  workflow_dispatch:
+
+env:
+  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+  ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+
+jobs:
+  mirror:
+    name: Mirror base and monitoring images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Mirror images
+        run: |
+          set -euo pipefail
+
+          DATE_TAG=$(date +%Y%m%d)
+
+          mirror_image() {
+            SOURCE_IMAGE="$1"
+            TARGET_REPO="$2"
+            STABLE_TAG="$3"
+            DATE_TAG_VALUE="$4"
+
+            TARGET_IMAGE="${ACR_REGISTRY}/${ACR_NAMESPACE}/${TARGET_REPO}"
+
+            echo "==> Pull ${SOURCE_IMAGE}"
+            docker pull "${SOURCE_IMAGE}"
+
+            echo "==> Tag ${TARGET_IMAGE}:${STABLE_TAG}"
+            docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}:${STABLE_TAG}"
+
+            echo "==> Tag ${TARGET_IMAGE}:${DATE_TAG_VALUE}"
+            docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}:${DATE_TAG_VALUE}"
+
+            echo "==> Push ${TARGET_IMAGE}:${STABLE_TAG}"
+            docker push "${TARGET_IMAGE}:${STABLE_TAG}"
+
+            echo "==> Push ${TARGET_IMAGE}:${DATE_TAG_VALUE}"
+            docker push "${TARGET_IMAGE}:${DATE_TAG_VALUE}"
+          }
+
+          mirror_image "mariadb:lts" "cloud-blog-mariadb" "lts" "lts-${DATE_TAG}"
+          mirror_image "nginx:alpine" "cloud-blog-nginx" "alpine" "alpine-${DATE_TAG}"
+
+          mirror_image "prom/prometheus:latest" "cloud-blog-prometheus" "latest" "${DATE_TAG}"
+          mirror_image "prom/alertmanager:latest" "cloud-blog-alertmanager" "latest" "${DATE_TAG}"
+          mirror_image "prom/node-exporter:latest" "cloud-blog-node-exporter" "latest" "${DATE_TAG}"
+          mirror_image "gcr.io/cadvisor/cadvisor:latest" "cloud-blog-cadvisor" "latest" "${DATE_TAG}"
+          mirror_image "grafana/grafana-oss:latest" "cloud-blog-grafana" "latest" "${DATE_TAG}"
