@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
@@ -12,6 +12,22 @@ const DEFAULT_CONFIG = {
   avatarImage: '/custom/images/avatar.jpg',
   articleImages: [],
   articleImageMap: {}
+}
+
+const emptyArticleForm = {
+  id: null,
+  category_id: '',
+  title: '',
+  slug: '',
+  summary: '',
+  content: '',
+  status: 'published'
+}
+
+const emptyCategoryForm = {
+  id: null,
+  name: '',
+  slug: ''
 }
 
 function requestJson(path, options = {}) {
@@ -60,13 +76,8 @@ function useSiteConfig() {
 function getArticleImage(config, article, index) {
   const map = config.articleImageMap || {}
 
-  if (map[String(article.id)]) {
-    return map[String(article.id)]
-  }
-
-  if (article.slug && map[article.slug]) {
-    return map[article.slug]
-  }
+  if (map[String(article.id)]) return map[String(article.id)]
+  if (article.slug && map[article.slug]) return map[article.slug]
 
   const customImages = Array.isArray(config.articleImages)
     ? config.articleImages.filter(Boolean)
@@ -77,14 +88,41 @@ function getArticleImage(config, article, index) {
   }
 
   const seed = encodeURIComponent(String(article.slug || article.id || index || 'blog'))
-
   return `https://picsum.photos/seed/cloud-blog-${seed}/900/650`
+}
+
+function Avatar({ config }) {
+  const [failed, setFailed] = useState(false)
+  const first = String(config.ownerName || '周').slice(0, 1)
+
+  if (config.avatarImage && !failed) {
+    return (
+      <img
+        className="home-avatar"
+        src={`${config.avatarImage}?v=${Date.now()}`}
+        alt={config.ownerName}
+        onError={() => setFailed(true)}
+      />
+    )
+  }
+
+  return <div className="home-avatar text-avatar">{first}</div>
+}
+
+function getOpsUrls() {
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+  const host = window.location.hostname
+
+  return {
+    grafana: `${protocol}//${host}:3000`,
+    prometheus: `${protocol}//${host}:9090`
+  }
 }
 
 function Layout({ config, children }) {
   const backgroundStyle = {
     backgroundImage:
-      `linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)), url('/custom/images/background.jpg?v=${Date.now()}')`
+      `linear-gradient(rgba(255,255,255,0.12), rgba(255,255,255,0.12)), url('/custom/images/background.jpg?v=${Date.now()}')`
   }
 
   return (
@@ -100,7 +138,6 @@ function Layout({ config, children }) {
           <a href="/">首页</a>
           <a href="/#articles">文章</a>
           <a href="/#categories">分类</a>
-          <a href="/#message">留言</a>
           <a href="/admin">后台</a>
         </nav>
       </header>
@@ -118,12 +155,13 @@ function HomePage() {
   const config = useSiteConfig()
   const [articles, setArticles] = useState([])
   const [categories, setCategories] = useState([])
+  const [selectedCategoryID, setSelectedCategoryID] = useState('all')
   const [message, setMessage] = useState('')
 
   async function loadData() {
     try {
       const [articleData, categoryData] = await Promise.all([
-        requestJson('/api/articles?page=1&page_size=20'),
+        requestJson('/api/articles?page=1&page_size=50'),
         requestJson('/api/categories')
       ])
 
@@ -139,39 +177,45 @@ function HomePage() {
     loadData()
   }, [])
 
+  const filteredArticles = useMemo(() => {
+    if (selectedCategoryID === 'all') return articles
+
+    return articles.filter((article) => {
+      return String(article.category_id || '') === String(selectedCategoryID)
+    })
+  }, [articles, selectedCategoryID])
+
+  const selectedCategoryName = useMemo(() => {
+    if (selectedCategoryID === 'all') return '全部文章'
+    const current = categories.find((item) => String(item.id) === String(selectedCategoryID))
+    return current ? current.name : '当前分类'
+  }, [categories, selectedCategoryID])
+
   return (
     <Layout config={config}>
       <main className="blog-container">
         <section className="home-hero">
-          {config.avatarImage && (
-            <img className="home-avatar" src={config.avatarImage} alt={config.ownerName} />
-          )}
-
-          {!config.avatarImage && (
-            <div className="home-avatar text-avatar">
-              {String(config.ownerName || '周').slice(0, 1)}
-            </div>
-          )}
-
+          <Avatar config={config} />
           <h1>{config.homeTitle}</h1>
           <p>{config.homeText}</p>
         </section>
 
         <section className="content-shell">
           <div className="main-column" id="articles">
+            <div className="category-title-card">
+              <span>当前分类</span>
+              <strong>{selectedCategoryName}</strong>
+            </div>
+
             {message && <div className="notice-card">{message}</div>}
 
-            {articles.map((article, index) => {
+            {filteredArticles.map((article, index) => {
               const image = getArticleImage(config, article, index)
 
               return (
                 <article className="article-card" key={article.id}>
                   <a className="article-cover" href={`/post/${article.id}`}>
-                    {image ? (
-                      <img src={image} alt={article.title} />
-                    ) : (
-                      <div className="default-cover"></div>
-                    )}
+                    <img src={image} alt={article.title} />
                   </a>
 
                   <div className="article-body">
@@ -195,18 +239,50 @@ function HomePage() {
               )
             })}
 
-            {articles.length === 0 && !message && (
-              <div className="notice-card">暂无文章。</div>
+            {filteredArticles.length === 0 && !message && (
+              <div className="notice-card">
+                当前分类下暂无文章。
+              </div>
             )}
           </div>
 
           <aside className="side-column">
             <section className="side-card" id="categories">
               <h3>分类</h3>
-              <div className="category-list">
-                {categories.map((item) => (
-                  <span key={item.id}>{item.name}</span>
-                ))}
+
+              <div className="category-vertical-list">
+                <button
+                  type="button"
+                  className={selectedCategoryID === 'all' ? 'active' : ''}
+                  onClick={() => setSelectedCategoryID('all')}
+                >
+                  <span>全部文章</span>
+                  <em>{articles.length}</em>
+                </button>
+
+                {categories.map((item) => {
+                  const count = articles.filter((article) => {
+                    return String(article.category_id || '') === String(item.id)
+                  }).length
+
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={String(selectedCategoryID) === String(item.id) ? 'active' : ''}
+                      onClick={() => setSelectedCategoryID(item.id)}
+                    >
+                      <span>{item.name}</span>
+                      <em>{count}</em>
+                    </button>
+                  )
+                })}
+
+                {categories.length === 0 && (
+                  <p className="category-empty">
+                    暂无分类，请到后台添加。
+                  </p>
+                )}
               </div>
             </section>
           </aside>
@@ -221,11 +297,7 @@ function PostPage() {
   const postID = window.location.pathname.split('/').filter(Boolean)[1]
   const [article, setArticle] = useState(null)
   const [comments, setComments] = useState([])
-  const [form, setForm] = useState({
-    nickname: '',
-    email: '',
-    content: ''
-  })
+  const [form, setForm] = useState({ nickname: '', email: '', content: '' })
   const [message, setMessage] = useState('')
 
   async function loadArticle() {
@@ -258,18 +330,12 @@ function PostPage() {
     try {
       const data = await requestJson(`/api/articles/${postID}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       })
 
       setMessage(data.message || '评论发布成功。')
-      setForm({
-        nickname: '',
-        email: '',
-        content: ''
-      })
+      setForm({ nickname: '', email: '', content: '' })
       await loadComments()
     } catch (error) {
       setMessage(error.message || '评论发布失败')
@@ -297,9 +363,7 @@ function PostPage() {
             <h1>{article.title}</h1>
             {article.summary && <p className="post-summary">{article.summary}</p>}
 
-            <div className="post-content">
-              {article.content}
-            </div>
+            <div className="post-content">{article.content}</div>
           </article>
         ) : (
           <div className="notice-card">文章加载中...</div>
@@ -343,9 +407,7 @@ function PostPage() {
               </article>
             ))}
 
-            {comments.length === 0 && (
-              <p className="no-comments">暂时还没有评论。</p>
-            )}
+            {comments.length === 0 && <p className="no-comments">暂时还没有评论。</p>}
           </div>
         </section>
       </main>
@@ -353,26 +415,31 @@ function PostPage() {
   )
 }
 
-const emptyForm = {
-  id: null,
-  category_id: 1,
-  title: '',
-  slug: '',
-  summary: '',
-  content: '',
-  status: 'published'
-}
-
 function AdminPage() {
   const config = useSiteConfig()
+  const opsUrls = getOpsUrls()
+
   const [token, setToken] = useState(localStorage.getItem('cloud_blog_admin_token') || '')
+  const [isAdminVerified, setIsAdminVerified] = useState(false)
+
   const [articles, setArticles] = useState([])
   const [categories, setCategories] = useState([])
-  const [form, setForm] = useState(emptyForm)
+  const [articleForm, setArticleForm] = useState(emptyArticleForm)
+  const [categoryForm, setCategoryForm] = useState(emptyCategoryForm)
   const [message, setMessage] = useState('请输入管理员 Token 后加载文章。')
 
-  async function loadCategories() {
+  async function loadPublicCategories() {
     const data = await requestJson('/api/categories')
+    setCategories(data.items || [])
+  }
+
+  async function loadAdminCategories() {
+    if (!token) return
+
+    const data = await requestJson('/api/admin/categories', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
     setCategories(data.items || [])
   }
 
@@ -384,14 +451,16 @@ function AdminPage() {
 
     try {
       const data = await requestJson('/api/admin/articles?page=1&page_size=50', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       })
 
       setArticles(data.items || [])
-      setMessage('文章列表加载成功。')
+      setIsAdminVerified(true)
+      setMessage('管理员权限验证成功。')
+
+      await loadAdminCategories()
     } catch (error) {
+      setIsAdminVerified(false)
       setMessage(error.message)
     }
   }
@@ -404,14 +473,12 @@ function AdminPage() {
 
     try {
       const data = await requestJson(`/api/admin/articles/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       })
 
-      setForm({
+      setArticleForm({
         id: data.id,
-        category_id: data.category_id || 1,
+        category_id: data.category_id || '',
         title: data.title || '',
         slug: data.slug || '',
         summary: data.summary || '',
@@ -427,7 +494,7 @@ function AdminPage() {
 
   function saveToken() {
     localStorage.setItem('cloud_blog_admin_token', token)
-    setMessage('Token 已保存。')
+    setMessage('Token 已保存，请点击验证/刷新。')
   }
 
   async function submitArticle(event) {
@@ -438,22 +505,22 @@ function AdminPage() {
       return
     }
 
-    if (!form.title.trim() || !form.content.trim()) {
+    if (!articleForm.title.trim() || !articleForm.content.trim()) {
       setMessage('标题和正文不能为空。')
       return
     }
 
     const payload = {
-      category_id: Number(form.category_id) || null,
-      title: form.title,
-      slug: form.slug,
-      summary: form.summary,
-      content: form.content,
-      status: form.status
+      category_id: Number(articleForm.category_id) || null,
+      title: articleForm.title,
+      slug: articleForm.slug,
+      summary: articleForm.summary,
+      content: articleForm.content,
+      status: articleForm.status
     }
 
-    const isEdit = Boolean(form.id)
-    const path = isEdit ? `/api/admin/articles/${form.id}` : '/api/admin/articles'
+    const isEdit = Boolean(articleForm.id)
+    const path = isEdit ? `/api/admin/articles/${articleForm.id}` : '/api/admin/articles'
     const method = isEdit ? 'PUT' : 'POST'
 
     try {
@@ -466,8 +533,8 @@ function AdminPage() {
         body: JSON.stringify(payload)
       })
 
-      setMessage(data.message || '保存成功。')
-      setForm(emptyForm)
+      setMessage(data.message || '文章保存成功。')
+      setArticleForm(emptyArticleForm)
       await loadAdminArticles()
     } catch (error) {
       setMessage(error.message)
@@ -475,35 +542,89 @@ function AdminPage() {
   }
 
   async function deleteArticle(id) {
-    if (!token) {
-      setMessage('请先输入管理员 Token。')
-      return
-    }
-
-    if (!window.confirm(`确认删除文章 ID=${id} 吗？`)) {
-      return
-    }
+    if (!window.confirm(`确认删除文章 ID=${id} 吗？`)) return
 
     try {
       const data = await requestJson(`/api/admin/articles/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       })
 
-      setMessage(data.message || '删除成功。')
-      if (form.id === id) {
-        setForm(emptyForm)
-      }
+      setMessage(data.message || '文章删除成功。')
+      if (articleForm.id === id) setArticleForm(emptyArticleForm)
       await loadAdminArticles()
     } catch (error) {
       setMessage(error.message)
     }
   }
 
+  function editCategory(item) {
+    setCategoryForm({
+      id: item.id,
+      name: item.name || '',
+      slug: item.slug || ''
+    })
+  }
+
+  async function submitCategory(event) {
+    event.preventDefault()
+
+    if (!token) {
+      setMessage('请先输入管理员 Token。')
+      return
+    }
+
+    if (!categoryForm.name.trim()) {
+      setMessage('分类名称不能为空。')
+      return
+    }
+
+    const isEdit = Boolean(categoryForm.id)
+    const path = isEdit
+      ? `/api/admin/categories/${categoryForm.id}`
+      : '/api/admin/categories'
+    const method = isEdit ? 'PUT' : 'POST'
+
+    try {
+      const data = await requestJson(path, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: categoryForm.name,
+          slug: categoryForm.slug
+        })
+      })
+
+      setMessage(data.message || '分类保存成功。')
+      setCategoryForm(emptyCategoryForm)
+      await loadAdminCategories()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  async function deleteCategory(id) {
+    if (!window.confirm(`确认删除分类 ID=${id} 吗？分类下有文章时不能删除。`)) return
+
+    try {
+      const data = await requestJson(`/api/admin/categories/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      setMessage(data.message || '分类删除成功。')
+      if (categoryForm.id === id) setCategoryForm(emptyCategoryForm)
+      await loadAdminCategories()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
   useEffect(() => {
-    loadCategories().catch(() => setMessage('分类加载失败。'))
+    loadPublicCategories().catch(() => setMessage('分类加载失败。'))
     if (token) loadAdminArticles()
   }, [])
 
@@ -521,40 +642,91 @@ function AdminPage() {
               placeholder="ADMIN_TOKEN"
             />
             <button onClick={saveToken}>保存</button>
-            <button onClick={loadAdminArticles}>刷新</button>
+            <button onClick={loadAdminArticles}>验证/刷新</button>
           </div>
 
           {message && <p className="admin-message">{message}</p>}
         </section>
 
+        {isAdminVerified && (
+          <section className="admin-card ops-card">
+            <h2>运维入口</h2>
+            <p>以下入口仅在管理员 Token 验证后显示。</p>
+            <div className="ops-link-row">
+              <a href={opsUrls.grafana} target="_blank" rel="noreferrer">打开 Grafana</a>
+              <a href={opsUrls.prometheus} target="_blank" rel="noreferrer">打开 Prometheus</a>
+            </div>
+          </section>
+        )}
+
+        <section className="admin-card category-admin-card">
+          <h2>分类管理</h2>
+
+          <form className="category-form" onSubmit={submitCategory}>
+            <input
+              value={categoryForm.name}
+              onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })}
+              placeholder="分类名称，例如：生活随笔、学习记录、读书笔记"
+            />
+            <input
+              value={categoryForm.slug}
+              onChange={(event) => setCategoryForm({ ...categoryForm, slug: event.target.value })}
+              placeholder="分类 Slug，例如：life、study、reading"
+            />
+            <button type="submit">{categoryForm.id ? '保存分类' : '新增分类'}</button>
+            <button type="button" onClick={() => setCategoryForm(emptyCategoryForm)}>清空</button>
+          </form>
+
+          <div className="category-admin-list">
+            {categories.map((item) => (
+              <article key={item.id} className="category-admin-item">
+                <div>
+                  <strong>{item.name}</strong>
+                  <span>slug：{item.slug}</span>
+                  {'article_count' in item && <span>文章数：{item.article_count}</span>}
+                </div>
+                <div>
+                  <button type="button" onClick={() => editCategory(item)}>编辑</button>
+                  <button type="button" onClick={() => deleteCategory(item.id)}>删除</button>
+                </div>
+              </article>
+            ))}
+
+            {categories.length === 0 && (
+              <p className="no-comments">暂无分类，请在上方输入分类名称后新增。</p>
+            )}
+          </div>
+        </section>
+
         <section className="admin-layout">
           <form className="admin-card admin-form" onSubmit={submitArticle}>
-            <h2>{form.id ? `编辑文章 #${form.id}` : '新增文章'}</h2>
+            <h2>{articleForm.id ? `编辑文章 #${articleForm.id}` : '新增文章'}</h2>
 
             <input
-              value={form.title}
-              onChange={(event) => setForm({ ...form, title: event.target.value })}
+              value={articleForm.title}
+              onChange={(event) => setArticleForm({ ...articleForm, title: event.target.value })}
               placeholder="标题"
             />
 
             <input
-              value={form.slug}
-              onChange={(event) => setForm({ ...form, slug: event.target.value })}
-              placeholder="Slug，例如 linux-note"
+              value={articleForm.slug}
+              onChange={(event) => setArticleForm({ ...articleForm, slug: event.target.value })}
+              placeholder="Slug，例如 my-first-post"
             />
 
             <select
-              value={form.category_id || ''}
-              onChange={(event) => setForm({ ...form, category_id: event.target.value })}
+              value={articleForm.category_id || ''}
+              onChange={(event) => setArticleForm({ ...articleForm, category_id: event.target.value })}
             >
+              <option value="">未分类</option>
               {categories.map((item) => (
                 <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
 
             <select
-              value={form.status}
-              onChange={(event) => setForm({ ...form, status: event.target.value })}
+              value={articleForm.status}
+              onChange={(event) => setArticleForm({ ...articleForm, status: event.target.value })}
             >
               <option value="published">published</option>
               <option value="draft">draft</option>
@@ -562,21 +734,21 @@ function AdminPage() {
 
             <textarea
               rows="3"
-              value={form.summary}
-              onChange={(event) => setForm({ ...form, summary: event.target.value })}
+              value={articleForm.summary}
+              onChange={(event) => setArticleForm({ ...articleForm, summary: event.target.value })}
               placeholder="摘要"
             />
 
             <textarea
               rows="14"
-              value={form.content}
-              onChange={(event) => setForm({ ...form, content: event.target.value })}
+              value={articleForm.content}
+              onChange={(event) => setArticleForm({ ...articleForm, content: event.target.value })}
               placeholder="正文"
             />
 
             <div className="admin-actions">
               <button type="submit">保存文章</button>
-              <button type="button" onClick={() => setForm(emptyForm)}>清空</button>
+              <button type="button" onClick={() => setArticleForm(emptyArticleForm)}>清空</button>
             </div>
           </form>
 
@@ -599,9 +771,7 @@ function AdminPage() {
               </article>
             ))}
 
-            {articles.length === 0 && (
-              <p className="no-comments">暂无文章，或 Token 未认证。</p>
-            )}
+            {articles.length === 0 && <p className="no-comments">暂无文章，或 Token 未认证。</p>}
           </section>
         </section>
       </main>

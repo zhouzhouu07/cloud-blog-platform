@@ -640,3 +640,69 @@ button {
 .comment-form textarea {
   background: rgba(255, 255, 255, 0.8) !important;
 }
+
+/* category-filter-final-20260801 */
+.category-title-card {
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 36px rgba(52, 38, 45, 0.08);
+}
+
+.category-title-card span {
+  display: block;
+  color: #888;
+  font-size: 13px;
+}
+
+.category-title-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #333;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.category-vertical-list {
+  display: grid;
+  gap: 10px;
+}
+
+.category-vertical-list button {
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #555;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  text-align: left;
+}
+
+.category-vertical-list button:hover,
+.category-vertical-list button.active {
+  color: #fff;
+  background: #d45d8c;
+}
+
+.category-vertical-list button span {
+  font-weight: 500;
+}
+
+.category-vertical-list button em {
+  font-style: normal;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.category-empty {
+  margin: 0;
+  color: #777;
+  line-height: 1.7;
+  font-size: 14px;
+}
