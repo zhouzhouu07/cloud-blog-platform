@@ -1,37 +1,33 @@
-# 环境变量与密钥
-.env
-.env.*
-!.env.example
+# secrets
+deploy/.env
+config/alertmanager/alertmanager.yml
 
-# 数据库数据
-data/
+# runtime custom files
+web/custom/
+frontend/public/custom/images/
+
+# database backups and logs
 backup/
+logs/
 *.sql
 *.sql.gz
 
-# 上传文件
-uploads/*
-!uploads/.gitkeep
-
-# 日志
-logs/
-*.log
-
-# 编辑器
-.vscode/
-.idea/
-*.swp
-
-# 前后端构建文件
-frontend/node_modules/
-frontend/dist/
-backend/bin/
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 临时配置备份
+# temporary backup files
 *.bak
 *.before-*
-web/custom/
+*.broken-*
+*~
+
+# frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# backend temporary files
+backend/tmp/
+backend/*.test
+
+# system/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
