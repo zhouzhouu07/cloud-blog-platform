@@ -539,3 +539,61 @@ button {
 .page-mask {
   background: rgba(255, 255, 255, 0.06) !important;
 }
+
+/* final-public-transparent-ui-20260801 */
+.article-card,
+.side-card,
+.post-panel,
+.comment-panel,
+.notice-card {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.article-card:hover {
+  box-shadow: none !important;
+}
+
+.article-body,
+.side-card,
+.post-panel,
+.comment-panel,
+.notice-card {
+  color: #2f2f2f;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.95);
+}
+
+.article-body h2,
+.post-panel h1,
+.side-card h3,
+.comment-panel h2 {
+  color: #222;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.95);
+}
+
+.article-body p,
+.post-summary,
+.post-content,
+.side-card p,
+.comment-item p,
+.no-comments {
+  color: #333;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.92);
+}
+
+.article-cover {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+.comment-form input,
+.comment-form textarea {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+.comment-item {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
