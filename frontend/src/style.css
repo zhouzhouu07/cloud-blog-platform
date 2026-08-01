@@ -597,3 +597,46 @@ button {
 .comment-item {
   background: rgba(255, 255, 255, 0.5) !important;
 }
+
+/* restore-public-card-ui-20260801 */
+.article-card,
+.side-card,
+.post-panel,
+.comment-panel,
+.notice-card {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 14px 36px rgba(52, 38, 45, 0.08) !important;
+}
+
+.article-card:hover {
+  box-shadow: 0 18px 46px rgba(52, 38, 45, 0.13) !important;
+}
+
+.article-body,
+.side-card,
+.post-panel,
+.comment-panel,
+.notice-card,
+.article-body h2,
+.post-panel h1,
+.side-card h3,
+.comment-panel h2,
+.article-body p,
+.post-summary,
+.post-content,
+.side-card p,
+.comment-item p,
+.no-comments {
+  text-shadow: none !important;
+}
+
+.comment-item {
+  background: rgba(255, 255, 255, 0.66) !important;
+}
+
+.comment-form input,
+.comment-form textarea {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
