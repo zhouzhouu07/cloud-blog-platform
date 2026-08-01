@@ -209,13 +209,6 @@ function HomePage() {
                 ))}
               </div>
             </section>
-
-            <section className="side-card" id="message">
-              <h3>关于本站</h3>
-              <p>
-                这里用于记录个人学习、生活随笔和技术成长。页面背景、头像和文章封面均可自定义替换。
-              </p>
-            </section>
           </aside>
         </section>
       </main>
